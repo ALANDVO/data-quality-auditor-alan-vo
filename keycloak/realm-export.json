@@ -1,0 +1,79 @@
+{
+  "realm": "data-quality-auditor",
+  "enabled": true,
+  "displayName": "Data Quality Auditor Realm",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrator with full system, dataset deletion, and audit management access"
+      },
+      {
+        "name": "analyst",
+        "description": "Analyst with access to run audits, drift detection, and generate remediations"
+      },
+      {
+        "name": "viewer",
+        "description": "Read-only access to view quality scorecards and reports"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "data-quality-auditor",
+      "name": "Data Quality Auditor SPA",
+      "description": "Public client using PKCE authorization code grant",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://127.0.0.1:3000/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://127.0.0.1:3000",
+        "http://localhost:3000"
+      ],
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "roles",
+        "profile",
+        "email"
+      ]
+    }
+  ],
+  "identityProviders": [
+    {
+      "alias": "enterprise-saml",
+      "displayName": "Enterprise SAML 2.0 IdP (Identity Broker)",
+      "providerId": "saml",
+      "enabled": false,
+      "trustEmail": true,
+      "storeToken": false,
+      "addReadTokenRoleOnCreate": false,
+      "authenticateByDefault": false,
+      "linkOnly": false,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "entityId": "http://127.0.0.1:8080/realms/data-quality-auditor",
+        "singleSignOnServiceUrl": "https://idp.example.com/saml/sso",
+        "nameIDPolicyFormat": "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
+        "signatureAlgorithm": "RSA_SHA256",
+        "wantAuthnRequestsSigned": "false",
+        "wantAssertionsSigned": "true",
+        "validateSignature": "true"
+      }
+    }
+  ]
+}

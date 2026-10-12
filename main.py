@@ -1,279 +1,191 @@
 #!/usr/bin/env python3
-# data-quality-auditor — AI data quality auditor that analyzes CSV/JSON datasets for completeness, consistency, anomalies, PII leaks, and schema drift, producing a quality scorecard with LLM-generated remediation suggestions.
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from llm_client import LLM
-def _load_data(path):
-    """Load CSV or JSON into a list of dict records."""
-    ext = os.path.splitext(path)[1].lower()
-    if ext == ".json":
-        with open(path) as f:
-            data = json.load(f)
-        if isinstance(data, dict):
-            for key in ("records", "data", "rows", "results"):
-                if key in data and isinstance(data[key], list):
-                    return data[key]
-            return [data]
-        return data
-    if ext == ".csv":
-        with open(path, newline="") as f:
-            return list(csv.DictReader(f))
-    raise ValueError(f"Unsupported format: {ext}")
+"""CLI and execution entrypoint for data-quality-auditor-alan-vo.
 
-def audit(args):
-    """Full data quality audit with scorecard."""
-    llm = LLM()
-    records = _load_data(args.file)
+Provides both CLI commands (audit, pii, drift) and web server launcher.
+"""
+
+import argparse
+import csv
+import json
+import os
+import sys
+from typing import List, Dict, Any
+
+# Ensure backend modules can be imported
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
+
+from app.services.auditor import DataQualityAuditor
+from app.services.pii_scanner import PIIScanner
+from app.services.drift_detector import DriftDetector
+from app.services.remediation import RemediationEngine
+
+def load_data(path: str) -> List[Dict[str, Any]]:
+    """Load tabular dataset from CSV or JSON file."""
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"File not found: {path}")
+
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read().strip()
+
+    if not content:
+        return []
+
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".json" or content.startswith(("[", "{")):
+        try:
+            data = json.loads(content)
+            if isinstance(data, list):
+                return data
+            if isinstance(data, dict):
+                for key in ("records", "data", "rows", "results", "items"):
+                    if key in data and isinstance(data[key], list):
+                        return data[key]
+                return [data]
+        except Exception:
+            pass
+
+    try:
+        import io
+        reader = csv.DictReader(io.StringIO(content))
+        return list(reader)
+    except Exception:
+        pass
+
+    raise ValueError(f"Unsupported file format: {ext} (supported: .csv, .json)")
+
+def cmd_audit(args):
+    """Run full quality audit and output scorecard."""
+    records = load_data(args.file)
     n = len(records)
     if not n:
-        print("No records found.")
+        print("No records found in dataset.")
         return
-    cols = list(records[0].keys())
-    print(f"Auditing {n} records x {len(cols)} columns\n")
 
-    # 1. Completeness
-    print(f"{'='*60}\nCOMPLETENESS\n{'='*60}")
-    completeness = {}
-    for col in cols:
-        nulls = sum(1 for r in records if r.get(col) in (None, "", "null", "NULL", "N/A", "n/a", "NA", "-"))
-        rate = nulls / n
-        completeness[col] = round(1 - rate, 4)
-        flag = "⚠️ " if rate > 0.1 else "   "
-        print(f"  {flag}{col:<25} complete={1-rate:.1%}  (missing: {nulls})")
-    comp_score = sum(completeness.values()) / len(completeness)
+    auditor = DataQualityAuditor()
+    scorecard = auditor.audit(records)
 
-    # 2. Duplicates & consistency
-    print(f"\n{'='*60}\nCONSISTENCY\n{'='*60}")
-    if n > 1:
-        seen = Counter(tuple(sorted((str(k), str(v)) for k, v in r.items())) for r in records)
-        dups = sum(c - 1 for c in seen.values() if c > 1)
-        print(f"  Full-row duplicates: {dups}")
-        dup_score = max(0, 1 - dups / n)
-    else:
-        dups, dup_score = 0, 1.0
+    print(f"\nAudited {scorecard.record_count} records x {scorecard.column_count} columns")
+    print(f"{'='*60}\nQUALITY SCORECARD\n{'='*60}")
+    print(f"  {'Dimension':<18} {'Score':>10} {'Weight':>8}")
+    print(f"  {'-'*40}")
+    for dim in scorecard.dimensions:
+        print(f"  {dim.dimension.capitalize():<18} {dim.score*100:>9.1f}% {dim.weight*100:>7.0f}%")
+    print(f"\n  OVERALL QUALITY: {scorecard.overall_score*100:.1f}%   GRADE: {scorecard.grade}\n")
 
-    # 3. Statistical anomalies on numeric columns
-    print(f"\n{'='*60}\nANOMALIES\n{'='*60}")
-    numeric_cols = {}
-    for col in cols:
-        vals = []
-        for r in records[:5000]:
-            try: vals.append(float(r.get(col)))
-            except (TypeError, ValueError): pass
-        if len(vals) >= 10:
-            numeric_cols[col] = vals
-    anomalies_found = 0
-    for col, vals in numeric_cols.items():
-        mu, sigma = statistics.mean(vals), statistics.pstdev(vals) or 1.0
-        outliers = [v for v in vals if abs(v - mu) > 3 * sigma]
-        if outliers:
-            anomalies_found += len(outliers)
-            print(f"  ⚠️  {col}: {len(outliers)} outlier(s) (mean={mu:.2f}, sd={sigma:.2f}) e.g. {outliers[:3]}")
-    if not numeric_cols:
-        print("  No numeric columns for statistical checks.")
-    anomaly_score = max(0.0, 1 - anomalies_found / max(n, 1))
+    print(f"{'='*60}\nFINDINGS SUMMARY\n{'='*60}")
+    print(f"  Full-row duplicates: {scorecard.duplicates_count}")
+    print(f"  Columns with missing values: {sum(1 for c in scorecard.completeness if c.missing_count > 0)}")
+    print(f"  Statistical anomaly columns: {len(scorecard.anomalies)}")
+    print(f"  PII sensitive columns: {len(scorecard.pii_findings)}")
 
-    # 4. PII scan
-    print(f"\n{'='*60}\nPII SCAN\n{'='*60}")
-    pii_columns = []
-    col_samples = {c: [str(r.get(c, ""))[:50] for r in records[:20]] for c in cols}
-    pii_result = llm.generate(
-        f"Dataset columns with sample values:\n{json.dumps(col_samples, indent=2)}\n\n"
-        "Classify the PII sensitivity of EACH column. Respond as JSON: "
-        "{\"columns\": [{\"name\": \"...\", \"type\": \"email|phone|ssn|address|name|date_of_birth|financial|location|none\", \"sensitivity\": \"high|medium|low|none\", \"regulation\": \"GDPR|CCPA|HIPAA|none\", \"sample_evidence\": \"...\"}]}",
-        system="You are a data privacy officer. Identify PII based on column names AND sample values. Be conservative — when in doubt, flag it."
-    )
-    pii_data = _parse_json(pii_result)
-    for entry in pii_data.get("columns", []):
-        if entry.get("sensitivity") in ("high", "medium"):
-            pii_columns.append(entry)
-            print(f"  🔒 {entry['name']}: {entry.get('type','?')} [{entry.get('sensitivity','?')}] {entry.get('regulation','')}")
-            if entry.get("sample_evidence"):
-                print(f"       evidence: {entry['sample_evidence']}")
-    if not pii_columns:
-        print("  No PII detected.")
-    pii_score = 1.0 - (0.4 * sum(1 for p in pii_columns if p.get("sensitivity") == "high") + 0.15 * sum(1 for p in pii_columns if p.get("sensitivity") == "medium"))
-
-    # 5. Schema drift (if baseline provided)
-    drift_score, drift_report = 1.0, []
-    if args.schema:
-        print(f"\n{'='*60}\nSCHEMA DRIFT\n{'='*60}")
-        with open(args.schema) as f:
-            baseline = json.load(f)
-        base_cols = set(baseline.keys()) if isinstance(baseline, dict) else set()
-        actual_cols = set(cols)
-        added, removed = actual_cols - base_cols, base_cols - actual_cols
-        if added: drift_report.append(f"Added columns: {sorted(added)}")
-        if removed: drift_report.append(f"Removed columns: {sorted(removed)}")
-        drift_score = max(0.0, 1 - len(added) / max(len(base_cols), 1) - len(removed) / max(len(base_cols), 1))
-        for line in drift_report:
-            print(f"  ⚠️  {line}")
-        if not drift_report:
-            print("  Schema matches baseline.")
-
-    # Composite score
-    weights = {"completeness": 0.30, "duplicates": 0.20, "anomalies": 0.20, "pii": 0.15, "drift": 0.15}
-    scores = {"completeness": comp_score, "duplicates": dup_score, "anomalies": anomaly_score, "pii": pii_score, "drift": drift_score}
-    if not args.schema:
-        rest = sum(weights[k] for k in scores if k != "drift")
-        scores = {k: v for k, v in scores.items() if k != "drift"}
-        weights = {k: v / rest for k, v in weights.items() if k != "drift"}
-    total = sum(scores[k] * weights[k] for k in scores)
-    grade = "A" if total >= 0.9 else "B" if total >= 0.75 else "C" if total >= 0.6 else "D"
-
-    print(f"\n{'='*60}\nQUALITY SCORECARD\n{'='*60}")
-    print(f"  {'Dimension':<15} {'Score':>8} {'Weight':>8}")
-    print(f"  {'-'*35}")
-    for k in scores:
-        print(f"  {k:<15} {scores[k]:>8.1%} {weights[k]:>8.1%}")
-    print(f"\n  OVERALL: {total:.1%}  GRADE: {grade}")
-
-    # LLM remediation
-    print(f"\n{'='*60}\nREMEDIACTION PLAN\n{'='*60}")
-    remediation = llm.generate(
-        f"Data quality report for {n} records:\n"
-        f"- Completeness per column: {json.dumps(completeness)}\n"
-        f"- Duplicates: {dups}, Anomalies: {anomalies_found}\n"
-        f"- PII columns: {json.dumps(pii_columns)}\n"
-        f"- Drift: {drift_report or 'none'}\n"
-        f"Columns: {cols}\n\n"
-        "Generate a prioritized remediation plan. For each issue: what to fix, exact approach (regex, constraint, masking rule, pipeline step), and estimated effort (S/M/L). "
-        "Order by business impact. Output as a numbered list with bold issue titles.",
-        system="You are a senior data engineer. Remediation must be concrete and implementable — no 'improve data quality' hand-waving."
-    )
-    print(remediation)
+    print(f"\n{'='*60}\nREMEDIATION RECOMMENDATIONS\n{'='*60}")
+    for fix in scorecard.deterministic_remediations:
+        print(f"  * {fix}")
 
     if args.output:
-        report = {
-            "file": args.file, "records": n, "columns": cols,
-            "scores": scores, "overall": round(total, 4), "grade": grade,
-            "completeness": completeness, "duplicates": dups, "anomalies": anomalies_found,
-            "pii": pii_columns, "drift": drift_report,
-            "remediation": remediation, "audited_at": datetime.now().isoformat(),
-        }
-        with open(args.output, "w") as f:
-            json.dump(report, f, indent=2)
-        print(f"\nScorecard saved to {args.output}")
-    return total
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(scorecard.dict(), f, indent=2)
+        print(f"\nScorecard exported to {args.output}")
 
-def pii(args):
-    """Deep PII scan with masking recommendations."""
-    llm = LLM()
-    records = _load_data(args.file)
-    cols = list(records[0].keys()) if records else []
-    samples = {c: [str(r.get(c, ""))[:60] for r in records[:30]] for c in cols}
-    print(f"PII scanning {len(records)} records, {len(cols)} columns...\n")
+def cmd_pii(args):
+    """Run deep PII scan on dataset."""
+    records = load_data(args.file)
+    scanner = PIIScanner()
+    findings = scanner.scan_columns(records)
 
-    result = llm.generate(
-        f"Columns with sample values (first 30 records):\n{json.dumps(samples, indent=2)}\n\n"
-        "For EACH column that contains PII or sensitive data, produce: "
-        "{\"column\": \"...\", \"pii_types\": [\"email\", ...], \"regulation\": [\"GDPR\", ...], \"risk\": \"...\", \"masking_rule\": \"concrete regex or transform\", \"anonymization\": \"strategy\"}\n"
-        "Output a JSON array. Only include columns that actually contain PII.",
-        system="You are a privacy engineer. Base findings on the ACTUAL sample values, not just column names. Provide masking rules that would be copy-paste ready in Python."
-    )
-    findings = _parse_json_array(result)
-    for f_ in findings:
-        print(f"  🔒 {f_.get('column', '?')}")
-        print(f"     PII types:   {', '.join(f_.get('pii_types', []))}")
-        print(f"     Regulation:  {', '.join(f_.get('regulation', []))}")
-        print(f"     Risk:        {f_.get('risk', '?')}")
-        print(f"     Masking:     {f_.get('masking_rule', 'n/a')}")
-        print()
+    print(f"\nPII Scan Report for {len(records)} records:\n{'='*60}")
     if not findings:
-        print("  No PII detected in sampled values.")
+        print("  No sensitive PII patterns detected.")
+    else:
+        for f in findings:
+            print(f"  [!] Column '{f.column}' ({f.sensitivity.upper()} sensitivity)")
+            print(f"      Entity Types: {', '.join(f.types)}")
+            print(f"      Regulations:  {f.regulation}")
+            print(f"      Masking Rule: {f.recommended_mask}")
+            if f.sample_evidence:
+                print(f"      Evidence:     {f.sample_evidence}")
+            print()
+
     if args.output:
-        with open(args.output, "w") as f:
-            json.dump(findings, f, indent=2)
-        print(f"Saved to {args.output}")
-    return findings
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump([f.dict() for f in findings], f, indent=2)
+        print(f"PII report saved to {args.output}")
 
-def drift(args):
-    """Compare two datasets for schema and distribution drift."""
-    llm = LLM()
-    current = _load_data(args.file)
-    baseline = _load_data(args.baseline)
-    cur_cols = set(list(current[0].keys()) if current else [])
-    base_cols = set(list(baseline[0].keys()) if baseline else [])
-    print(f"Drift check: {len(current)} current vs {len(baseline)} baseline records\n")
+def cmd_drift(args):
+    """Run schema and distribution drift comparison."""
+    cur_records = load_data(args.file)
+    base_records = load_data(args.baseline)
 
-    added, removed, common = cur_cols - base_cols, base_cols - cur_cols, cur_cols & base_cols
-    print(f"  Added columns:   {sorted(added) or 'none'}")
-    print(f"  Removed columns: {sorted(removed) or 'none'}")
+    detector = DriftDetector()
+    added, removed, common, drifts, score = detector.analyze(cur_records, base_records)
 
-    # Distribution drift on common numeric columns
-    print(f"\n  Distribution drift (common columns):")
-    drifts = []
-    for col in sorted(common):
-        def _nums(data):
-            vals = []
-            for r in data[:5000]:
-                try: vals.append(float(r.get(col)))
-                except (TypeError, ValueError): pass
-            return vals
-        cv, bv = _nums(current), _nums(baseline)
-        if len(cv) >= 10 and len(bv) >= 10:
-            cm, bm = statistics.mean(cv), statistics.mean(bv)
-            cs, bs = statistics.pstdev(cv) or 1.0, statistics.pstdev(bv) or 1.0
-            shift = abs(cm - bm) / max(bs, 1e-9)
-            flag = "⚠️ " if shift > 2 else "   "
-            print(f"  {flag}{col:<25} base_mean={bm:.2f} cur_mean={cm:.2f} (shift={shift:.1f}σ)")
-            if shift > 2:
-                drifts.append({"column": col, "baseline_mean": round(bm, 4), "current_mean": round(cm, 4), "sigma_shift": round(shift, 2)})
+    print(f"\nDataset Drift Analysis vs Baseline\n{'='*60}")
+    print(f"  Added Columns:   {sorted(added) if added else 'None'}")
+    print(f"  Removed Columns: {sorted(removed) if removed else 'None'}")
+    print(f"  Common Columns:  {len(common)}")
+    print(f"  Drift Stability Score: {score*100:.1f}%\n")
 
     if drifts:
-        analysis = llm.generate(
-            f"Schema changes: added={sorted(added)} removed={sorted(removed)}\n"
-            f"Numeric drift: {json.dumps(drifts, indent=2)}\n\n"
-            "Assess this drift: is it likely an upstream schema change, a data pipeline bug, or a legitimate business change? "
-            "What should be validated before shipping? What downstream models/dashboards are at risk? Be specific.",
-            system="You are a data platform engineer diagnosing drift. Distinguish real signal from noise."
-        )
-        print(f"\n{'='*60}\nDRIFT ANALYSIS\n{'='*60}\n{analysis}")
+        print("  Distribution Shifts in Features:")
+        for d in drifts:
+            flag = "[!]" if d.is_drifted else "   "
+            print(f"  {flag} {d.column:<20} base_mean={d.baseline_mean:.2f} cur_mean={d.current_mean:.2f} (shift={d.sigma_shift:.2f}σ)")
+    else:
+        print("  No numeric distribution shifts detected.")
 
     if args.output:
-        with open(args.output, "w") as f:
-            json.dump({"added": sorted(added), "removed": sorted(removed), "drifts": drifts, "checked_at": datetime.now().isoformat()}, f, indent=2)
-        print(f"\nSaved to {args.output}")
-    return {"added": sorted(added), "removed": sorted(removed), "drifts": drifts}
+        out_data = {
+            "added_columns": added,
+            "removed_columns": removed,
+            "drifts": [d.dict() for d in drifts],
+            "drift_score": score,
+        }
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(out_data, f, indent=2)
+        print(f"\nDrift report saved to {args.output}")
 
-def _parse_json(raw):
-    start, end = raw.find("{"), raw.rfind("}")
-    if start == -1 or end == -1:
-        return {}
-    try:
-        return json.loads(raw[start:end + 1])
-    except json.JSONDecodeError:
-        return {}
-
-def _parse_json_array(raw):
-    start, end = raw.find("["), raw.rfind("]")
-    if start == -1 or end == -1:
-        return []
-    try:
-        data = json.loads(raw[start:end + 1])
-        return data if isinstance(data, list) else []
-    except json.JSONDecodeError:
-        return []
+def cmd_serve(args):
+    """Start FastAPI server."""
+    import uvicorn
+    from app.core.config import settings
+    uvicorn.run("app.main:app", host=args.host or settings.HOST, port=args.port or settings.PORT, reload=args.reload)
 
 def main():
-    import argparse
-    p = argparse.ArgumentParser(prog="data-quality-auditor", description="AI data quality auditor")
-    sub = p.add_subparsers(dest="cmd", required=True)
+    parser = argparse.ArgumentParser(
+        prog="data-quality-auditor",
+        description="AI data quality auditor profiling tabular datasets for completeness, anomalies, PII, and drift.",
+    )
+    sub = parser.add_subparsers(dest="cmd", required=True)
 
-    a = sub.add_parser("audit", help="Full quality audit with scorecard")
-    a.add_argument("--file", required=True); a.add_argument("--schema", default=None); a.add_argument("--output", default=None)
-    a.set_defaults(fn=audit)
+    # audit command
+    p_audit = sub.add_parser("audit", help="Run full data quality audit")
+    p_audit.add_argument("--file", required=True, help="Path to CSV or JSON dataset")
+    p_audit.add_argument("--schema", default=None, help="Optional schema baseline")
+    p_audit.add_argument("--output", default=None, help="Save report to JSON file")
+    p_audit.set_defaults(fn=cmd_audit)
 
-    pi = sub.add_parser("pii", help="Deep PII scan with masking rules")
-    pi.add_argument("--file", required=True); pi.add_argument("--output", default=None)
-    pi.set_defaults(fn=pii)
+    # pii command
+    p_pii = sub.add_parser("pii", help="Run sensitive PII scanner")
+    p_pii.add_argument("--file", required=True, help="Path to CSV or JSON dataset")
+    p_pii.add_argument("--output", default=None, help="Save PII report to JSON file")
+    p_pii.set_defaults(fn=cmd_pii)
 
-    d = sub.add_parser("drift", help="Schema/distribution drift vs baseline")
-    d.add_argument("--file", required=True); d.add_argument("--baseline", required=True); d.add_argument("--output", default=None)
-    d.set_defaults(fn=drift)
+    # drift command
+    p_drift = sub.add_parser("drift", help="Detect schema and distribution drift")
+    p_drift.add_argument("--file", required=True, help="Current dataset path")
+    p_drift.add_argument("--baseline", required=True, help="Baseline dataset path")
+    p_drift.add_argument("--output", default=None, help="Save drift report to JSON file")
+    p_drift.set_defaults(fn=cmd_drift)
 
-    args = p.parse_args()
+    # serve command
+    p_serve = sub.add_parser("serve", help="Start FastAPI web backend")
+    p_serve.add_argument("--host", default="127.0.0.1", help="Bind host")
+    p_serve.add_argument("--port", type=int, default=8000, help="Bind port")
+    p_serve.add_argument("--reload", action="store_true", help="Enable reload")
+    p_serve.set_defaults(fn=cmd_serve)
+
+    args = parser.parse_args()
     args.fn(args)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -1,32 +1,34 @@
-# Unified LLM client.
-import os, json, requests
+import os
+import sys
+import asyncio
+from typing import List, Dict, Any, Optional
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
+from app.services.llm_service import LLMService
 
 class LLM:
+    """Unified LLM client interface backed by multi-provider LLMService."""
+
     def __init__(self):
-        self.api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.environ.get("LLM_API_KEY", "")
-        self.base_url = os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1")
-        self.model = os.environ.get("LLM_MODEL", "gpt-4o")
+        self.service = LLMService()
 
-    def chat(self, messages, temperature=0.7, max_tokens=2048):
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        payload = {"model": self.model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
-        r = requests.post(f"{self.base_url}/chat/completions", headers=headers, json=payload, timeout=120)
-        r.raise_for_status()
-        return r.json()["choices"][0]["message"]["content"]
-
-    def classify(self, text, categories, instructions=""):
-        sep = ", "
-        prompt = f"{instructions}Classify: {text}
-Categories: {sep.join(categories)}
-Respond as JSON: {{"category": "...", "confidence": 0.95, "reasoning": "..."}}"
-        raw = self.chat([{"role": "system", "content": "Respond only with valid JSON."}, {"role": "user", "content": prompt}])
-        start, end = raw.find("{"), raw.rfind("}") + 1
+    def generate(self, prompt: str, system: str = "You are a helpful AI assistant.") -> str:
+        """Synchronously generate text using configured provider."""
+        if not self.service.is_configured():
+            return "Advisory LLM is not configured. Running in offline deterministic mode."
         try:
-            return json.loads(raw[start:end])
-        except:
-            return {"category": "unknown", "confidence": 0.0, "reasoning": raw}
+            return asyncio.run(self.service._call_provider(system_prompt=system, user_prompt=prompt))
+        except Exception as exc:
+            return f"LLM error: {exc}"
 
-    def generate(self, prompt, system="You are a helpful AI assistant.", temperature=0.7):
-        return self.chat([{"role": "system", "content": system}, {"role": "user", "content": prompt}], temperature=temperature)
+    def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: int = 2048) -> str:
+        """Chat completion helper."""
+        system = "You are a helpful AI assistant."
+        user_msgs = []
+        for m in messages:
+            if m.get("role") == "system":
+                system = m.get("content", "")
+            else:
+                user_msgs.append(m.get("content", ""))
+        user_prompt = "\n".join(user_msgs)
+        return self.generate(user_prompt, system=system)
