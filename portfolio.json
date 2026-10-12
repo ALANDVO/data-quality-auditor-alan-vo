@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "name": "data-quality-auditor-alan-vo",
+  "owner": "ALANDVO",
+  "email": "alanvo@gmail.com",
+  "domain": "AI/ML Data Quality Assurance & Dataset Governance",
+  "summary": "Work in progress: data-quality-auditor-alan-vo",
+  "workflows": [
+    "Dataset ingestion and multi-dimensional quality scorecard profiling",
+    "Schema drift and statistical feature distribution shift analysis",
+    "Deterministic code remediation generation and advisory LLM playbook export"
+  ],
+  "auth": "oidc-keycloak-saml-broker",
+  "llm_providers": [
+    "openai-compatible",
+    "anthropic",
+    "gemini",
+    "ollama"
+  ],
+  "status": "work-in-progress"
+}

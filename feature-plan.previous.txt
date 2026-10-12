@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "current_feature": "full-product-baseline",
+  "features": [
+    {
+      "id": "core-audit-engine",
+      "title": "Deterministic Dataset Quality Profiling Engine",
+      "status": "done",
+      "acceptance": [
+        "Profiles CSV and JSON datasets for completeness, null rates, and missing values",
+        "Identifies exact full-row duplicates and cross-column consistency issues",
+        "Calculates statistical anomalies and z-score outliers on numeric distributions",
+        "Performs heuristic and pattern-based PII leak detection across sensitive entity types",
+        "Computes weighted composite quality score (0-100) and letter grade"
+      ],
+      "implementation": [
+        "backend/app/services/auditor.py",
+        "backend/app/services/pii_scanner.py"
+      ],
+      "tests": [
+        "backend/tests/test_auditor.py",
+        "backend/tests/test_pii.py"
+      ]
+    },
+    {
+      "id": "drift-analysis-engine",
+      "title": "Dataset Schema & Distribution Drift Engine",
+      "status": "done",
+      "acceptance": [
+        "Compares dataset schema against baseline schema or baseline dataset",
+        "Detects added, removed, and type-altered columns",
+        "Measures numeric feature distribution shift with mean, sigma, and divergence metrics",
+        "Generates actionable drift summary reports"
+      ],
+      "implementation": [
+        "backend/app/services/drift_detector.py"
+      ],
+      "tests": [
+        "backend/tests/test_drift.py"
+      ]
+    },
+    {
+      "id": "remediation-engine",
+      "title": "Deterministic & Advisory Remediation Engine",
+      "status": "done",
+      "acceptance": [
+        "Generates deterministic code-level remediation rules (masking, imputing, dropping duplicates)",
+        "Provides opt-in advisory LLM remediation suggestions with provider configuration support",
+        "Exports remediation playbooks and audit summaries in JSON/Markdown format"
+      ],
+      "implementation": [
+        "backend/app/services/remediation.py",
+        "backend/app/services/llm_service.py"
+      ],
+      "tests": [
+        "backend/tests/test_remediation.py",
+        "backend/tests/test_llm.py"
+      ]
+    },
+    {
+      "id": "fastapi-backend-api",
+      "title": "Modular FastAPI Backend & Persistence Layer",
+      "status": "done",
+      "acceptance": [
+        "FastAPI application exporting create_app/app in backend/app/main.py",
+        "SQLite persistent storage for datasets, audit runs, drift analyses, and audit logs",
+        "CRUD, search, pagination, filtering, and export endpoints",
+        "Structured error handling and UTC timestamps"
+      ],
+      "implementation": [
+        "backend/app/main.py",
+        "backend/app/api/audits.py",
+        "backend/app/api/datasets.py",
+        "backend/app/api/auth.py",
+        "backend/app/models/schemas.py",
+        "backend/app/models/entities.py",
+        "backend/app/core/database.py"
+      ],
+      "tests": [
+        "backend/tests/test_api_audits.py",
+        "backend/tests/test_persistence.py"
+      ]
+    },
+    {
+      "id": "oidc-pkce-auth",
+      "title": "OIDC Bearer Auth with Keycloak & Local Demo Mode",
+      "status": "done",
+      "acceptance": [
+        "Bearer token authentication with JWT issuer/audience validation",
+        "Role-based access control for viewer, analyst, and admin roles",
+        "Local demo mode explicitly enabled for local development, refused in production",
+        "Documented Keycloak realm configuration with SAML identity brokering support"
+      ],
+      "implementation": [
+        "backend/app/core/auth.py",
+        "backend/app/core/config.py"
+      ],
+      "tests": [
+        "backend/tests/test_auth.py"
+      ]
+    },
+    {
+      "id": "react-ts-frontend",
+      "title": "React TypeScript Vite Interactive Quality Dashboard",
+      "status": "done",
+      "acceptance": [
+        "SPA PKCE authentication with in-memory token management and demo mode switcher",
+        "Interactive dataset upload, inspection, and profiling workflow",
+        "Detailed scorecard visualization across all 5 quality dimensions",
+        "Schema and distribution drift comparison interface",
+        "Remediation playbook viewer with code copy and report export workflows"
+      ],
+      "implementation": [
+        "frontend/src/App.tsx",
+        "frontend/src/api/client.ts",
+        "frontend/src/components/Dashboard.tsx",
+        "frontend/src/components/AuditView.tsx",
+        "frontend/src/components/DriftView.tsx",
+        "frontend/src/components/RemediationView.tsx"
+      ],
+      "tests": [
+        "frontend/src/__tests__/App.test.tsx",
+        "frontend/src/__tests__/AuditView.test.tsx",
+        "frontend/src/__tests__/client.test.ts"
+      ]
+    },
+    {
+      "id": "docker-ci-packaging",
+      "title": "Containerization & GitHub Actions CI Workflow",
+      "status": "done",
+      "acceptance": [
+        "Backend Dockerfile with nonroot user",
+        "Frontend Dockerfile with nonroot user and static server",
+        "compose.yaml with backend, frontend, Keycloak, and local persistent volumes",
+        ".github/workflows/ci.yml running pytest, npm test, npm build, and docker build"
+      ],
+      "implementation": [
+        "compose.yaml",
+        "backend/Dockerfile",
+        "frontend/Dockerfile",
+        ".github/workflows/ci.yml"
+      ],
+      "tests": [
+        "backend/tests/test_ci_config.py"
+      ]
+    }
+  ]
+}
