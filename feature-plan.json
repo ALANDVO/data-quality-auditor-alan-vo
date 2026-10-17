@@ -1,16 +1,1 @@
-{
-  "schema_version": 1,
-  "current_feature": "continue-implementation",
-  "features": [
-    {
-      "id": "continue-implementation",
-      "title": "Continue implementation and resolve known failures",
-      "status": "in_progress",
-      "acceptance": [
-        "Run checks, fix failures, and implement the next planned feature"
-      ],
-      "implementation": [],
-      "tests": []
-    }
-  ]
-}
+{"schema_version":1,"current_feature":"pii-scanner-column-hint-sensitivity","features":[{"id":"pii-scanner-column-hint-sensitivity","title":"Fix PII scanner column-name hint sensitivity and metadata","status":"done","acceptance":["Column-name-only email detection produces high sensitivity, GDPR/CCPA regulation, and mask_email rule","Column-name-only phone detection produces medium sensitivity with correct regulation and mask","Column-name-only ip_address and date_of_birth detection produce medium sensitivity with correct metadata","Sensitivity never downgrades from high to medium or medium to low when multiple PII types match a column","mask_rule is preserved (first match wins) instead of being overwritten by later patterns"],"implementation":["backend/app/services/pii_scanner.py"],"tests":["backend/tests/test_pii.py"]},{"id":"audit-log-api-endpoint","title":"Expose audit log listing API endpoint","status":"planned","acceptance":["GET /api/audit-logs returns paginated audit log items with action, resource_type, user, and details","Authenticated users can list audit log entries","Tests cover retrieval of audit log entries"],"implementation":[],"tests":[]},{"id":"cli-pydantic-deprecation","title":"Replace deprecated Pydantic v2 .dict() calls with .model_dump()","status":"planned","acceptance":["All scorecard.dict() and entity.dict() calls replaced with .model_dump()","No Pydantic deprecation warnings in test output"],"implementation":[],"tests":[]}]}

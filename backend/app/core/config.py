@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     model_config = ConfigDict(case_sensitive=True)
 
     PROJECT_NAME: str = "data-quality-auditor-alan-vo"
-    VERSION: str = "1.0.0"
+    VERSION: str = "1.1.0"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEMO_MODE: bool = os.getenv("DEMO_MODE", "true").lower() in ("true", "1", "yes")
 
