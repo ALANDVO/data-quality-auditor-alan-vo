@@ -9,6 +9,7 @@ from app.api.datasets import router as datasets_router
 from app.api.audits import router as audits_router
 from app.api.drift import router as drift_router
 from app.api.remediation import router as remediation_router
+from app.api.audit_logs import router as audit_logs_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(audits_router, prefix="/api")
     app.include_router(drift_router, prefix="/api")
     app.include_router(remediation_router, prefix="/api")
+    app.include_router(audit_logs_router, prefix="/api")
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
