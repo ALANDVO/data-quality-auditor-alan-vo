@@ -1,3 +1,4 @@
+import json
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -41,7 +42,7 @@ def list_audit_logs(
             resource_id=log.resource_id,
             user_id=log.user_id,
             user_role=log.user_role,
-            details=log.details_json,
+            details=json.loads(log.details_json) if log.details_json else {},
             created_at=log.created_at.isoformat() if log.created_at else "",
         )
         for log in logs
@@ -68,6 +69,6 @@ def get_audit_log(
         resource_id=log.resource_id,
         user_id=log.user_id,
         user_role=log.user_role,
-        details=log.details_json,
+        details=json.loads(log.details_json) if log.details_json else {},
         created_at=log.created_at.isoformat() if log.created_at else "",
     )
