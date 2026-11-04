@@ -156,3 +156,5 @@ class AuditLogItem(BaseModel):
 class AuditLogListResponse(BaseModel):
     items: List[AuditLogItem]
     total: int
+    page: int
+    page_size: int
