@@ -224,4 +224,4 @@ MIT License — Copyright (c) 2026 Alan Vo <alanvo@gmail.com>. See [LICENSE](LIC
 
 ---
 
-Alan Vo · [alanvo.net](https://alanvo.net)
+Alan Vo · [alanvo.net](https://alanvo.net) · [X: @alanvoasi](https://x.com/alanvoasi)
