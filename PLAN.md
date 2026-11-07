@@ -4,7 +4,7 @@ Each round completes one feature or repair. Future items are planned, not implem
 
 ## Current round
 
-pii-scanner-column-hint-sensitivity
+cli-pydantic-deprecation
 
 ## Roadmap
 
@@ -25,18 +25,26 @@ Tests: `backend/tests/test_pii.py`
 
 ### audit-log-api-endpoint — Expose audit log listing API endpoint
 
-Status: planned
+Status: done
 
 Acceptance:
 - GET /api/audit-logs returns paginated audit log items with action, resource_type, user, and details
 - Authenticated users can list audit log entries
 - Tests cover retrieval of audit log entries
 
+Implementation: `backend/app/api/audit_logs.py`
+
+Tests: `backend/tests/test_api_integration.py`
+
 ### cli-pydantic-deprecation — Replace deprecated Pydantic v2 .dict() calls with .model_dump()
 
-Status: planned
+Status: done
 
 Acceptance:
 - All scorecard.dict() and entity.dict() calls replaced with .model_dump()
 - No Pydantic deprecation warnings in test output
+
+Implementation: `backend/app/api/audits.py`, `backend/app/api/drift.py`
+
+Tests: `backend/tests/test_api_integration.py`, `backend/tests/test_drift.py`
 
