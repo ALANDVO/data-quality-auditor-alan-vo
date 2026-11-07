@@ -221,3 +221,7 @@ MIT License — Copyright (c) 2026 Alan Vo <alanvo@gmail.com>. See [LICENSE](LIC
 ---
 
 **Built by [Alan Vo](https://github.com/ALANDVO)** | [alanvo@gmail.com](mailto:alanvo@gmail.com) | AI, Machine Learning & Data Systems
+
+---
+
+Alan Vo · [alanvo.net](https://alanvo.net)

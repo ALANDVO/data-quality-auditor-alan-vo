@@ -43,3 +43,7 @@ Partial code published for continued development. Known issues: STATUS.md.
 - React 18 + TypeScript + Vite frontend dashboard with interactive audit, drift, and remediation workflows.
 - Comprehensive backend pytest suite and frontend vitest suite.
 - Containerization setup (`compose.yaml`, backend and frontend Dockerfiles) and GitHub Actions CI workflow.
+
+---
+
+Alan Vo · [alanvo.net](https://alanvo.net)

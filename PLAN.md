@@ -48,3 +48,6 @@ Implementation: `backend/app/api/audits.py`, `backend/app/api/drift.py`
 
 Tests: `backend/tests/test_api_integration.py`, `backend/tests/test_drift.py`
 
+---
+
+Alan Vo · [alanvo.net](https://alanvo.net)
