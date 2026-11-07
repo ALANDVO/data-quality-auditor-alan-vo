@@ -36,7 +36,7 @@ async def run_audit(
     if payload.include_llm_advisory:
         llm = LLMService()
         try:
-            advisory = await llm.generate_remediation_advisory(scorecard.dict())
+            advisory = await llm.generate_remediation_advisory(scorecard.model_dump())
             scorecard.llm_remediation_advisory = advisory
         except Exception as exc:
             scorecard.llm_remediation_advisory = f"LLM advisory unavailable: {exc}"
@@ -62,7 +62,7 @@ async def run_audit(
             "anomalies_count": len(scorecard.anomalies),
             "pii_count": len(scorecard.pii_findings),
         }),
-        details_json=json.dumps(scorecard.dict()),
+        details_json=json.dumps(scorecard.model_dump()),
         remediation_plan=json.dumps(scorecard.deterministic_remediations),
         created_by=user.username,
     )

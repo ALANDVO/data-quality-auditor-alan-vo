@@ -43,7 +43,7 @@ async def run_drift_analysis(
             drift_summary = {
                 "added_columns": added,
                 "removed_columns": removed,
-                "drifts": [d.dict() for d in drifts],
+                "drifts": [d.model_dump() for d in drifts],
                 "drift_score": drift_score,
             }
             advisory = await llm.generate_drift_advisory(drift_summary)
@@ -60,7 +60,7 @@ async def run_drift_analysis(
         added_columns_json=json.dumps(added),
         removed_columns_json=json.dumps(removed),
         common_columns_json=json.dumps(common),
-        drifts_json=json.dumps([d.dict() for d in drifts]),
+        drifts_json=json.dumps([d.model_dump() for d in drifts]),
         drift_score=drift_score,
         created_by=user.username,
     )
