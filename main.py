@@ -84,7 +84,7 @@ def cmd_audit(args):
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
-            json.dump(scorecard.dict(), f, indent=2)
+            json.dump(scorecard.model_dump(), f, indent=2)
         print(f"\nScorecard exported to {args.output}")
 
 def cmd_pii(args):
@@ -108,7 +108,7 @@ def cmd_pii(args):
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
-            json.dump([f.dict() for f in findings], f, indent=2)
+            json.dump([f.model_dump() for f in findings], f, indent=2)
         print(f"PII report saved to {args.output}")
 
 def cmd_drift(args):
@@ -137,7 +137,7 @@ def cmd_drift(args):
         out_data = {
             "added_columns": added,
             "removed_columns": removed,
-            "drifts": [d.dict() for d in drifts],
+            "drifts": [d.model_dump() for d in drifts],
             "drift_score": score,
         }
         with open(args.output, "w", encoding="utf-8") as f:
