@@ -1,12 +1,15 @@
 # Changelog
 
+## 1.5.0 — work-in-progress checkpoint
+
+Partial code published for continued development. Known issues: STATUS.md.
+
 ## 1.4.0 — work-in-progress checkpoint
 
 Partial code published for continued development. Known issues: STATUS.md.
 
-## 1.3.0 — work-in-progress checkpoint
-
-Partial code published for continued development. Known issues: STATUS.md.
+### Fixed
+- **Pydantic v2 deprecation**: Replaced all deprecated `.dict()` calls with `.model_dump()` across the codebase (`backend/app/api/audits.py`, `backend/app/api/drift.py`, `main.py`). This eliminates Pydantic v2 deprecation warnings during test runs and CLI usage.
 
 ## 1.2.0 — work-in-progress checkpoint
 
