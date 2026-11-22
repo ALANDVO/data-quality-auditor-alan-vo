@@ -1,13 +1,23 @@
 import os
+from pathlib import Path
 from typing import List, Optional
 from pydantic import model_validator, ConfigDict
 from pydantic_settings import BaseSettings
+
+# Single version source: the VERSION file at the repository root.
+_VERSION_FILE = Path(__file__).resolve().parents[3] / "VERSION"
+
+def _read_version(default: str = "0.0.0") -> str:
+    try:
+        return _VERSION_FILE.read_text(encoding="utf-8").strip() or default
+    except OSError:
+        return default
 
 class Settings(BaseSettings):
     model_config = ConfigDict(case_sensitive=True)
 
     PROJECT_NAME: str = "data-quality-auditor-alan-vo"
-    VERSION: str = "1.1.0"
+    VERSION: str = _read_version()
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEMO_MODE: bool = os.getenv("DEMO_MODE", "true").lower() in ("true", "1", "yes")
 

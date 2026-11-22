@@ -1,1 +1,99 @@
-{"schema_version":1,"current_feature":"cli-pydantic-deprecation","features":[{"id":"pii-scanner-column-hint-sensitivity","title":"Fix PII scanner column-name hint sensitivity and metadata","status":"done","acceptance":["Column-name-only email detection produces high sensitivity, GDPR/CCPA regulation, and mask_email rule","Column-name-only phone detection produces medium sensitivity with correct regulation and mask","Column-name-only ip_address and date_of_birth detection produce medium sensitivity with correct metadata","Sensitivity never downgrades from high to medium or medium to low when multiple PII types match a column","mask_rule is preserved (first match wins) instead of being overwritten by later patterns"],"implementation":["backend/app/services/pii_scanner.py"],"tests":["backend/tests/test_pii.py"]},{"id":"audit-log-api-endpoint","title":"Expose audit log listing API endpoint","status":"done","acceptance":["GET /api/audit-logs returns paginated audit log items with action, resource_type, user, and details","Authenticated users can list audit log entries","Tests cover retrieval of audit log entries"],"implementation":["backend/app/api/audit_logs.py"],"tests":["backend/tests/test_api_integration.py"]},{"id":"cli-pydantic-deprecation","title":"Replace deprecated Pydantic v2 .dict() calls with .model_dump()","status":"done","acceptance":["All scorecard.dict() and entity.dict() calls replaced with .model_dump()","No Pydantic deprecation warnings in test output"],"implementation":["backend/app/api/audits.py","backend/app/api/drift.py"],"tests":["backend/tests/test_api_integration.py","backend/tests/test_drift.py"]}]}
+{
+  "schema_version": 1,
+  "current_feature": "audit-baseline-schema-drift",
+  "features": [
+    {
+      "id": "pii-scanner-column-hint-sensitivity",
+      "title": "Fix PII scanner column-name hint sensitivity and metadata",
+      "status": "done",
+      "acceptance": [
+        "Column-name-only email detection produces high sensitivity, GDPR/CCPA regulation, and mask_email rule",
+        "Column-name-only phone detection produces medium sensitivity with correct regulation and mask",
+        "Column-name-only ip_address and date_of_birth detection produce medium sensitivity with correct metadata",
+        "Sensitivity never downgrades from high to medium or medium to low when multiple PII types match a column",
+        "mask_rule is preserved (first match wins) instead of being overwritten by later patterns"
+      ],
+      "implementation": [
+        "backend/app/services/pii_scanner.py"
+      ],
+      "tests": [
+        "backend/tests/test_pii.py"
+      ]
+    },
+    {
+      "id": "audit-log-api-endpoint",
+      "title": "Expose audit log listing API endpoint",
+      "status": "done",
+      "acceptance": [
+        "GET /api/audit-logs returns paginated audit log items with action, resource_type, user, and details",
+        "Authenticated users can list audit log entries",
+        "Tests cover retrieval of audit log entries"
+      ],
+      "implementation": [
+        "backend/app/api/audit_logs.py"
+      ],
+      "tests": [
+        "backend/tests/test_api_integration.py"
+      ]
+    },
+    {
+      "id": "cli-pydantic-deprecation",
+      "title": "Replace deprecated Pydantic v2 .dict() calls with .model_dump()",
+      "status": "done",
+      "acceptance": [
+        "All scorecard.dict() and entity.dict() calls replaced with .model_dump()",
+        "No Pydantic deprecation warnings in test output"
+      ],
+      "implementation": [
+        "backend/app/api/audits.py",
+        "backend/app/api/drift.py"
+      ],
+      "tests": [
+        "backend/tests/test_api_integration.py",
+        "backend/tests/test_drift.py"
+      ]
+    },
+    {
+      "id": "audit-baseline-schema-drift",
+      "title": "Compute schema drift score when audit runs against a baseline dataset",
+      "status": "done",
+      "acceptance": [
+        "POST /api/audits without baseline_schema_dataset_id stores drift_score = 1.0 (unchanged behavior)",
+        "POST /api/audits with baseline_schema_dataset_id computes schema stability score and persists it on the audit run",
+        "Baseline dataset with a removed column produces drift_score below 1.0 in create and GET responses",
+        "POST /api/audits with an unknown baseline_schema_dataset_id returns 404 instead of silently ignoring the field"
+      ],
+      "implementation": [
+        "backend/app/services/drift_detector.py",
+        "backend/app/api/audits.py"
+      ],
+      "tests": [
+        "backend/tests/test_api_integration.py",
+        "backend/tests/test_drift.py"
+      ]
+    },
+    {
+      "id": "tighten-pii-value-patterns",
+      "title": "Tighten PII value regexes to stop false positives",
+      "status": "planned",
+      "acceptance": [
+        "Phone pattern does not match values such as 192.168.1.1.5 or 2020-13-45999",
+        "Date-of-birth pattern rejects impossible dates such as 2020-13-45",
+        "Existing PII detection tests continue to pass"
+      ],
+      "implementation": [],
+      "tests": []
+    },
+    {
+      "id": "cli-audit-schema-baseline",
+      "title": "Honor main.py audit --schema flag for schema drift reporting",
+      "status": "planned",
+      "acceptance": [
+        "main.py audit --schema <file> prints schema stability score against that baseline",
+        "Without --schema output is unchanged"
+      ],
+      "implementation": [],
+      "tests": []
+    }
+  ]
+}

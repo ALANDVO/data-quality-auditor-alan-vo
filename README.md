@@ -1,6 +1,6 @@
 # data-quality-auditor-alan-vo — Alan Vo | AI & Machine Learning
 
-Current version: `1.6.0`.
+Current version: `1.7.0`.
 
 > Work in progress. This checkpoint may be incomplete or fail tests. See PLAN.md and STATUS.md before use.
 
@@ -170,7 +170,7 @@ All data endpoints require an `Authorization: Bearer <token>` header. In local d
 | `POST` | `/api/datasets` | `analyst` | Ingest new CSV or JSON tabular dataset |
 | `GET` | `/api/datasets/{id}` | `viewer` | Retrieve dataset metadata and preview sample records |
 | `DELETE` | `/api/datasets/{id}` | `admin` | Permanently delete dataset and audit history |
-| `POST` | `/api/audits` | `analyst` | Execute 5-point quality audit and generate scorecard |
+| `POST` | `/api/audits` | `analyst` | Execute 5-point quality audit and generate scorecard; optional `baseline_schema_dataset_id` computes and stores schema drift score |
 | `GET` | `/api/audits` | `viewer` | List historical audit runs |
 | `GET` | `/api/audits/{id}` | `viewer` | Get detailed audit scorecard |
 | `GET` | `/api/audits/{id}/export` | `viewer` | Export audit scorecard report (Markdown or JSON) |
@@ -178,6 +178,8 @@ All data endpoints require an `Authorization: Bearer <token>` header. In local d
 | `GET` | `/api/drift` | `viewer` | List historical drift comparisons |
 | `GET` | `/api/remediation/playbook/{id}` | `viewer` | Get code remediation rules and full Python pipeline |
 | `GET` | `/api/remediation/export-script/{id}` | `viewer` | Download generated `clean_pipeline.py` script |
+
+> `POST /api/audits` accepts `baseline_schema_dataset_id`. When supplied, the run stores a schema stability score (`drift_score`) computed from added/removed columns versus that dataset; without it, `drift_score` remains `1.0`. An unknown baseline id returns `404`.
 
 ---
 

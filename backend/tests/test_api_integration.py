@@ -219,3 +219,47 @@ def test_api_audit_logs_viewer_access():
     list_data = list_resp.json()
     assert "items" in list_data
     assert "total" in list_data
+
+def test_api_audit_baseline_schema_drift():
+    """baseline_schema_dataset_id drives the audit drift_score; missing baseline is 404."""
+    token = client.post("/api/auth/demo-token?role=analyst").json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    current = {
+        "name": "Drift Current",
+        "file_type": "csv",
+        "content": "id,amount,region\n1,10.0,EU\n2,12.0,US\n",
+    }
+    baseline = {
+        "name": "Drift Baseline",
+        "file_type": "csv",
+        "content": "id,amount\n1,10.0\n2,12.0\n",
+    }
+    cur_id = client.post("/api/datasets", json=current, headers=headers).json()["id"]
+    base_id = client.post("/api/datasets", json=baseline, headers=headers).json()["id"]
+
+    # No baseline supplied -> drift_score defaults to 1.0
+    no_base = client.post("/api/audits", json={"dataset_id": cur_id}, headers=headers)
+    assert no_base.status_code == 201
+    assert no_base.json()["drift_score"] == 1.0
+
+    # Baseline supplied with a removed column -> drift_score < 1.0 and persisted
+    with_base = client.post(
+        "/api/audits",
+        json={"dataset_id": cur_id, "baseline_schema_dataset_id": base_id},
+        headers=headers,
+    )
+    assert with_base.status_code == 201
+    audit_id = with_base.json()["id"]
+    assert with_base.json()["drift_score"] < 1.0
+
+    stored = client.get(f"/api/audits/{audit_id}", headers=headers).json()
+    assert stored["drift_score"] == with_base.json()["drift_score"]
+
+    # Non-existent baseline is rejected rather than silently ignored
+    missing = client.post(
+        "/api/audits",
+        json={"dataset_id": cur_id, "baseline_schema_dataset_id": "does-not-exist"},
+        headers=headers,
+    )
+    assert missing.status_code == 404
