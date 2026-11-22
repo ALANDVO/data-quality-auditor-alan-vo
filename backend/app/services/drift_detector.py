@@ -2,6 +2,21 @@ import statistics
 from typing import List, Dict, Any, Tuple
 from app.models.schemas import FeatureDrift
 
+def schema_stability_score(current_records: List[Dict[str, Any]], baseline_records: List[Dict[str, Any]]) -> float:
+    """Schema-only stability score in [0, 1] comparing column sets of two record lists.
+
+    Uses the same weights as DriftDetector schema component so audit-level schema
+    drift stays consistent with the /api/drift endpoint.
+    """
+    cur_cols = set(current_records[0].keys()) if current_records else set()
+    base_cols = set(baseline_records[0].keys()) if baseline_records else set()
+    added = len(cur_cols - base_cols)
+    removed = len(base_cols - cur_cols)
+    total_cols = max(len(base_cols), 1)
+    schema_penalty = (added * 0.5 + removed * 0.8) / total_cols
+    return max(0.0, 1.0 - schema_penalty)
+
+
 class DriftDetector:
     """Detects schema drift and numeric feature distribution shift against a baseline."""
 

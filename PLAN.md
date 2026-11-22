@@ -4,7 +4,7 @@ Each round completes one feature or repair. Future items are planned, not implem
 
 ## Current round
 
-cli-pydantic-deprecation
+audit-baseline-schema-drift
 
 ## Roadmap
 
@@ -47,6 +47,37 @@ Acceptance:
 Implementation: `backend/app/api/audits.py`, `backend/app/api/drift.py`
 
 Tests: `backend/tests/test_api_integration.py`, `backend/tests/test_drift.py`
+
+### audit-baseline-schema-drift — Compute schema drift score when audit runs against a baseline dataset
+
+Status: done
+
+Acceptance:
+- POST /api/audits without baseline_schema_dataset_id stores drift_score = 1.0 (unchanged behavior)
+- POST /api/audits with baseline_schema_dataset_id computes schema stability score and persists it on the audit run
+- Baseline dataset with a removed column produces drift_score below 1.0 in create and GET responses
+- POST /api/audits with an unknown baseline_schema_dataset_id returns 404 instead of silently ignoring the field
+
+Implementation: `backend/app/services/drift_detector.py`, `backend/app/api/audits.py`
+
+Tests: `backend/tests/test_api_integration.py`, `backend/tests/test_drift.py`
+
+### tighten-pii-value-patterns — Tighten PII value regexes to stop false positives
+
+Status: planned
+
+Acceptance:
+- Phone pattern does not match values such as 192.168.1.1.5 or 2020-13-45999
+- Date-of-birth pattern rejects impossible dates such as 2020-13-45
+- Existing PII detection tests continue to pass
+
+### cli-audit-schema-baseline — Honor main.py audit --schema flag for schema drift reporting
+
+Status: planned
+
+Acceptance:
+- main.py audit --schema <file> prints schema stability score against that baseline
+- Without --schema output is unchanged
 
 ---
 

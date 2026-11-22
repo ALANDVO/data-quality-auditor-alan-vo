@@ -14,6 +14,7 @@ from app.models.schemas import (
     UserProfile,
 )
 from app.services.auditor import DataQualityAuditor
+from app.services.drift_detector import schema_stability_score
 from app.services.llm_service import LLMService
 
 router = APIRouter(prefix="/audits", tags=["Audits"])
@@ -31,6 +32,19 @@ async def run_audit(
     records = json.loads(dataset.data_json) if dataset.data_json else []
     auditor = DataQualityAuditor()
     scorecard = auditor.audit(records)
+
+    # Optional schema drift against a baseline dataset. Absent baseline -> 1.0 (no drift).
+    drift_score = 1.0
+    if payload.baseline_schema_dataset_id:
+        baseline = (
+            db.query(Dataset)
+            .filter(Dataset.id == payload.baseline_schema_dataset_id)
+            .first()
+        )
+        if not baseline:
+            raise HTTPException(status_code=404, detail="Baseline dataset not found")
+        baseline_records = json.loads(baseline.data_json) if baseline.data_json else []
+        drift_score = schema_stability_score(records, baseline_records)
 
     # Optional advisory LLM generation
     if payload.include_llm_advisory:
@@ -54,7 +68,7 @@ async def run_audit(
         consistency_score=dim_dict.get("consistency", 0.0),
         anomaly_score=dim_dict.get("anomalies", 0.0),
         pii_score=dim_dict.get("pii", 0.0),
-        drift_score=1.0,
+        drift_score=round(drift_score, 4),
         summary_json=json.dumps({
             "record_count": scorecard.record_count,
             "column_count": scorecard.column_count,

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.7.0 — work-in-progress checkpoint
+
+Partial code published for continued development. Known issues: STATUS.md.
+
+## 1.7.0 — work-in-progress checkpoint
+
+Partial code published for continued development. Known issues: STATUS.md.
+
+### Fixed
+- **Audit schema drift was ignored**: `AuditRunRequest.baseline_schema_dataset_id` was accepted by `POST /api/audits` but never read, so every audit stored a hardcoded `drift_score` of `1.0`. Supplying a baseline now computes a schema stability score from added/removed columns and persists it; omitting it keeps `drift_score` at `1.0`. An unknown baseline id now returns `404` instead of being silently ignored.
+- Added `schema_stability_score()` in `backend/app/services/drift_detector.py`, reusing the same schema penalty weights as `DriftDetector.analyze` so audit-level and `/api/drift` drift scores stay consistent.
+
+### Added
+- `test_api_audit_baseline_schema_drift` in `backend/tests/test_api_integration.py` covering the no-baseline default, the with-baseline score, persistence through `GET /api/audits/{id}`, and the missing-baseline `404`.
+
 ## 1.6.0 — work-in-progress checkpoint
 
 Partial code published for continued development. Known issues: STATUS.md.
