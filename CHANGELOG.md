@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.0 — work-in-progress checkpoint
+
+Partial code published for continued development. Known issues: STATUS.md.
+
 ## 1.7.0 — work-in-progress checkpoint
 
 Partial code published for continued development. Known issues: STATUS.md.
@@ -15,6 +19,11 @@ Partial code published for continued development. Known issues: STATUS.md.
 ### Added
 - `test_api_audit_baseline_schema_drift` in `backend/tests/test_api_integration.py` covering the no-baseline default, the with-baseline score, persistence through `GET /api/audits/{id}`, and the missing-baseline `404`.
 
+
+
+### Tightened PII value regexes to stop false positives
+- Phone pattern now rejects IP-like values (e.g., 192.168.1.1.5) and date-like values (e.g., 2020-13-45999)
+- Date-of-birth pattern now validates month 01-12 and day ranges, rejecting impossible dates such as 2020-13-45
 ## 1.6.0 — work-in-progress checkpoint
 
 Partial code published for continued development. Known issues: STATUS.md.
