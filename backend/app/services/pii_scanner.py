@@ -23,7 +23,7 @@ PATTERNS = {
         "mask_card: redact to ****-****-****-XXXX"
     ),
     "phone": (
-        re.compile(r"^\+?[0-9\s().-]{10,20}$"),
+        re.compile(r"^(?!\d{4}[-/]\d{2})(?!\d{1,3}(\.\d{1,3}){3,})\+?[0-9\s().-]{10,20}$"),
         "medium",
         "GDPR / CCPA / TCPA",
         "mask_phone: redact digits except last 4"
@@ -35,7 +35,7 @@ PATTERNS = {
         "truncate_ip: zero out last octet e.g. 192.168.1.0/24"
     ),
     "date_of_birth": (
-        re.compile(r"^\d{4}[-/]\d{2}[-/]\d{2}$|^\d{2}[-/]\d{2}[-/]\d{4}$"),
+        re.compile(r"^(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|1[0-9]|2[0-9]|3[01])$|^(?:0[1-9]|1[0-9]|2[0-9]|3[01])-(?:0[1-9]|1[0-2])-(?:19|20)\d{2}$"),
         "medium",
         "HIPAA 18 Identifiers",
         "generalize_dob: retain year only e.g. 1990-01-01 -> 1990"
